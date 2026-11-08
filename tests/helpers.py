@@ -207,3 +207,56 @@ def networkx_k_shortest_costs(graph: AugmentedGraph, k: int) -> list[int]:
     except nx.NetworkXNoPath:
         return []
     return costs
+
+
+def to_networkx_capacity(graph: AugmentedGraph, mode: str) -> nx.DiGraph:
+    """Mirror an augmented graph as a DiGraph carrying max-flow capacities.
+
+    Only valid when no two arcs share a (source, target) pair; networkx
+    refuses multigraphs for flow problems outright.
+    """
+    from chokepoint.capacity import arc_capacities
+
+    capacities = arc_capacities(graph, mode)
+    mirror = nx.DiGraph()
+    mirror.add_nodes_from(graph.adjacency)
+    for arc_index, arc in enumerate(graph.arcs):
+        if mirror.has_edge(arc.source, arc.target):
+            raise AssertionError(
+                f"parallel arc {arc.source}->{arc.target}; "
+                "use to_networkx_capacity_summed instead"
+            )
+        mirror.add_edge(arc.source, arc.target, capacity=capacities[arc_index])
+    return mirror
+
+
+def to_networkx_capacity_summed(graph: AugmentedGraph, mode: str) -> nx.DiGraph:
+    """As above, but adding the capacities of parallel arcs together.
+
+    For max-flow purposes two parallel edges of capacity c1 and c2 are exactly
+    equivalent to one edge of capacity c1 + c2, so the flow *value* is
+    unchanged. The cut's edge *set* is not recoverable from this mirror, which
+    is why it is only ever used to check values.
+    """
+    from chokepoint.capacity import arc_capacities
+
+    capacities = arc_capacities(graph, mode)
+    mirror = nx.DiGraph()
+    mirror.add_nodes_from(graph.adjacency)
+    for arc_index, arc in enumerate(graph.arcs):
+        if mirror.has_edge(arc.source, arc.target):
+            mirror[arc.source][arc.target]["capacity"] += capacities[arc_index]
+        else:
+            mirror.add_edge(arc.source, arc.target, capacity=capacities[arc_index])
+    return mirror
+
+
+def networkx_min_cut_value(graph: AugmentedGraph, mode: str, *, summed: bool = False):
+    """The minimum cut value per networkx."""
+    mirror = (
+        to_networkx_capacity_summed(graph, mode)
+        if summed
+        else to_networkx_capacity(graph, mode)
+    )
+    value, _ = nx.minimum_cut(mirror, graph.source, graph.sink)
+    return value
