@@ -242,6 +242,34 @@ def test_ranking_puts_disconnecting_fixes_first():
     assert impact.delta is None
 
 
+def test_a_disconnecting_fix_outranks_a_merely_slowing_one():
+    """Full disconnection is a different kind of outcome, so it ranks first.
+
+    "Perimeter MFA" closes both routes' first hop and disconnects everything,
+    but costs 9. "Rotate a" costs 1 and raises the attacker's cost by 8
+    without stopping them. The disconnecting fix is ranked above it even
+    though it is nine times dearer, because an unbounded improvement is not
+    comparable to a finite one. Cost only breaks ties inside a bucket.
+    """
+    net = build(
+        ["s", "a", "b", "t"],
+        ["s"],
+        ["t"],
+        [
+            ("s", "a", 1, "Perimeter MFA", 9),
+            ("a", "t", 1, "Rotate a", 1),
+            ("s", "b", 5, "Perimeter MFA", 9),
+            ("b", "t", 5, "Rotate b", 1),
+        ],
+    )
+    impacts = analyze(net, k=3).fix_impacts
+    assert [i.name for i in impacts] == ["Perimeter MFA", "Rotate a", "Rotate b"]
+
+    assert impacts[0].disconnects and impacts[0].delta is None
+    assert impacts[1].delta == 8
+    assert impacts[2].delta == 0
+
+
 def test_ranking_breaks_delta_ties_by_reach_then_cost():
     """Equal effect, so the cheaper fix should be recommended first."""
     net = build(
