@@ -34,9 +34,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Kunal0626/chokepoint"
-Source = "https://github.com/Kunal0626/chokepoint"
-Issues = "https://github.com/Kunal0626/chokepoint/issues"
+Homepage = "https://github.com/Kunal0626/ChokePoint"
+Source = "https://github.com/Kunal0626/ChokePoint"
+Issues = "https://github.com/Kunal0626/ChokePoint/issues"
 
 [project.optional-dependencies]
 viz = ["matplotlib>=3.7"]

@@ -29,7 +29,7 @@ to disagree with them.
 From a clean clone:
 
 ```bash
-git clone https://github.com/Kunal0626/chokepoint.git && cd chokepoint
+git clone https://github.com/Kunal0626/ChokePoint.git && cd chokepoint
 ```
 
 ```bash
