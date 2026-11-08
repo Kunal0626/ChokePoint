@@ -16,6 +16,7 @@ from fractions import Fraction
 from typing import Any
 
 from .capacity import Capacity
+from .bench import BenchResult
 from .recommend import Analysis, FixImpact, PathView, WhatIf
 
 WIDTH = 74
@@ -313,4 +314,92 @@ def json_whatif(result: WhatIf) -> dict[str, Any]:
         "original_paths_surviving": result.original_paths_surviving,
         "original_path_count": result.original_path_count,
         "remaining_paths": [_path_json(p) for p in result.paths],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Benchmark
+# ---------------------------------------------------------------------------
+
+THEORY = (
+    "Dijkstra O((V+E) log V), Yen O(k*V*(V+E) log V), Edmonds-Karp O(V*E^2)"
+)
+
+
+def text_bench(result: BenchResult, env: dict[str, str]) -> str:
+    out = ["=" * WIDTH]
+    out.append(" ChokePoint benchmark")
+    out.append(
+        f" {result.nodes} nodes, {result.edges} edges, "
+        f"{result.layers} layers, seed {result.seed}"
+    )
+    out.append("=" * WIDTH)
+    out.append("")
+    # The environment is printed with the numbers, not in a footnote,
+    # because a runtime without a machine attached is not a result.
+    for key, value in env.items():
+        out.append(f"   {key:<8}: {value}")
+    runs = result.timings[0].runs if result.timings else 0
+    out.append(f"   {'runs':<8}: median of {runs}, after one untimed warm-up")
+    out.append("")
+
+    out.append(f"   {'operation':<28}{'median':>11}{'min':>11}{'max':>11}")
+    out.append(f"   {'-' * 61}")
+    for timing in result.timings:
+        out.append(
+            f"   {timing.label:<28}{timing.median_ms:>8.2f} ms"
+            f"{timing.min_ms:>8.2f} ms{timing.max_ms:>8.2f} ms"
+        )
+    out.append("")
+
+    # Printed so a reader can see the graph was not degenerate: a benchmark
+    # on a graph whose target is unreachable measures almost nothing.
+    out.append("   What the run actually found:")
+    if result.cheapest_cost is None:
+        out.append("     no attack path (this benchmark graph is degenerate)")
+    else:
+        out.append(
+            f"     cheapest attack cost  {result.cheapest_cost} "
+            f"over {result.cheapest_hops} hops"
+        )
+    out.append(f"     distinct paths found  {result.paths_found}")
+    out.append(
+        f"     minimum cut           {_capacity_text(result.min_cut_value)} "
+        f"across {result.min_cut_edges} edges"
+    )
+    out.append(f"     augmentation rounds   {result.augmentations}")
+    out.append("")
+    out.append(f"   Theoretical bounds: {THEORY}.")
+    return "\n".join(out)
+
+
+def json_bench(result: BenchResult, env: dict[str, str]) -> dict[str, Any]:
+    return {
+        "_format": _FORMAT_NOTE,
+        "environment": dict(env),
+        "graph": {
+            "nodes": result.nodes,
+            "edges": result.edges,
+            "layers": result.layers,
+            "seed": result.seed,
+        },
+        "found": {
+            "cheapest_attack_cost": result.cheapest_cost,
+            "cheapest_hops": result.cheapest_hops,
+            "paths_found": result.paths_found,
+            "min_cut_value": _capacity(result.min_cut_value),
+            "min_cut_edges": result.min_cut_edges,
+            "augmentations": result.augmentations,
+        },
+        "timings_ms": [
+            {
+                "operation": timing.label,
+                "runs": timing.runs,
+                "median": round(timing.median_ms, 3),
+                "min": round(timing.min_ms, 3),
+                "max": round(timing.max_ms, 3),
+            }
+            for timing in result.timings
+        ],
+        "theoretical_bounds": THEORY,
     }

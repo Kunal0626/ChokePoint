@@ -22,6 +22,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from . import __version__
+from .bench import DEFAULT_REPEAT, environment, run_benchmark
 from .capacity import CAPACITY_MODES, DEFAULT_CAPACITY_MODE
 from .loader import load_network
 from .maxflow import SelfCheckError
@@ -29,7 +30,14 @@ from .model import Network
 from .recommend import Analysis, analyze, whatif
 from .render_dot import render_with_graphviz, to_dot, write_dot
 from .render_mpl import render_png
-from .report import json_report, json_whatif, text_report, text_whatif
+from .report import (
+    json_bench,
+    json_report,
+    json_whatif,
+    text_bench,
+    text_report,
+    text_whatif,
+)
 from .visual import RenderUnavailable
 from .yen import DEFAULT_K
 
@@ -98,6 +106,35 @@ def build_parser() -> argparse.ArgumentParser:
         help="name of the fix to apply, exactly as it appears in the model",
     )
 
+    bench_cmd = subcommands.add_parser(
+        "bench", help="time the algorithms on a generated layered graph"
+    )
+    bench_cmd.add_argument(
+        "--nodes", type=_positive_int, default=1000, metavar="N", help="default 1000"
+    )
+    bench_cmd.add_argument(
+        "--edges", type=_positive_int, default=5000, metavar="N", help="default 5000"
+    )
+    bench_cmd.add_argument(
+        "--seed", type=int, default=1, help="graph generator seed (default 1)"
+    )
+    bench_cmd.add_argument(
+        "--repeat",
+        type=_positive_int,
+        default=DEFAULT_REPEAT,
+        metavar="N",
+        help=f"timed runs per operation (default {DEFAULT_REPEAT})",
+    )
+    bench_cmd.add_argument(
+        "--layers", type=_positive_int, default=None, metavar="N",
+        help="default is about the square root of the node count",
+    )
+    bench_cmd.add_argument("--k", type=_positive_int, default=DEFAULT_K, metavar="N")
+    bench_cmd.add_argument(
+        "--capacity", choices=CAPACITY_MODES, default=DEFAULT_CAPACITY_MODE
+    )
+    bench_cmd.add_argument("--json", action="store_true")
+
     return parser
 
 
@@ -105,15 +142,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
+    # bench generates its own graph, so it never touches the loader.
+    if args.command == "bench":
+        return _run_bench(args)
+
     try:
         network = load_network(args.network)
         analysis: Analysis | None = None
         if args.command == "analyze":
             analysis = analyze(network, k=args.k, mode=args.capacity)
             text, payload = text_report(analysis), json_report(analysis)
-        else:
+        elif args.command == "whatif":
             outcome = whatif(network, args.apply, k=args.k, mode=args.capacity)
             text, payload = text_whatif(outcome), json_whatif(outcome)
+        else:
+            raise AssertionError(f"unhandled command {args.command!r}")
     except (FileNotFoundError, IsADirectoryError, ValueError) as exc:
         # Every user-facing input problem lands here: missing file, malformed
         # JSON, a model that fails validation, an unknown fix name.
@@ -131,6 +174,27 @@ def main(argv: Sequence[str] | None = None) -> int:
     if getattr(args, "out", None) and analysis is not None:
         _write_artifacts(Path(args.out), text, payload, network, analysis)
 
+    return 0
+
+
+def _run_bench(args: argparse.Namespace) -> int:
+    try:
+        result = run_benchmark(
+            nodes=args.nodes,
+            edges=args.edges,
+            seed=args.seed,
+            k=args.k,
+            mode=args.capacity,
+            repeat=args.repeat,
+            layers=args.layers,
+        )
+    except ValueError as exc:
+        print(f"{PROGRAM}: {exc}", file=sys.stderr)
+        return 2
+
+    env = environment()
+    payload = json_bench(result, env)
+    print(json.dumps(payload, indent=2) if args.json else text_bench(result, env))
     return 0
 
 
