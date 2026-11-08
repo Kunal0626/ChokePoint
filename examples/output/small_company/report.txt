@@ -1,0 +1,61 @@
+==========================================================================
+ ChokePoint: small-company
+ capacity mode: fixcost     top-k requested: 3
+==========================================================================
+
+1. ATTACK PATHS                                                cheapest: 9
+--------------------------------------------------------------------------
+
+   Cheapest route, hop by hop:
+
+      Internet [internet]
+        |  difficulty 4   unpatched web application
+        |  fix: Patch web application and deploy a WAF (cost 5)
+        v
+      Public web server [web]
+        |  difficulty 5   database credentials in the application config file
+        |  fix: Move secrets to a vault and restrict the database to the app subnet (cost 4)
+        v
+      Production database [db_prod]   <-- TARGET
+
+   Top 3 distinct loopless paths:
+
+      #1  difficulty   9   Internet -> Public web server -> Production database
+      #2  difficulty  12   Internet -> Mail server -> Employee workstations -> File server -> Production database
+      #3  difficulty  12   Internet -> VPN concentrator -> Employee workstations -> File server -> Production database
+
+2. MINIMUM FIX SET (min-cut)                                total cost: 12
+--------------------------------------------------------------------------
+
+   Applying all of these cuts every route to every target.
+   No cheaper set of fixes achieves that.
+
+      cost   6   Deploy LAPS and Credential Guard
+      cost   4   Move secrets to a vault and restrict the database to the app subnet
+      cost   2   Tighten file share permissions
+      --------
+      total 12
+
+3. SINGLE-FIX RANKING
+--------------------------------------------------------------------------
+
+   Each fix applied alone. Ranked by how much it raises the
+   attacker's cheapest cost, then by reach across the top 3.
+
+      fix                        cost  after  raises   paths
+      ------------------------------------------------------
+      Move secrets to a vaul...     4     12      +3     1/3
+      Patch web application ...     5     12      +3     1/3
+      Secrets hygiene audit ...     2      9      +0     2/3
+      Tighten file share per...     2      9      +0     2/3
+      Enforce MFA on all ext...     3      9      +0     1/3
+      Move VPN clients to a ...     3      9      +0     1/3
+      Block Office macros an...     4      9      +0     1/3
+      Mail filtering and phi...     5      9      +0     1/3
+      Scope the backup agent...     3      9      +0     0/3
+      Separate backup creden...     5      9      +0     0/3
+      Deploy LAPS and Creden...     6      9      +0     0/3
+      Tiered admin model, da...     8      9      +0     0/3
+
+   A fix that raises the cost by +0 is not useless: it may be
+   needed in the cut because another route is equally cheap.

@@ -23,6 +23,7 @@ from .visual import (
     edge_roles,
     layered_positions,
     node_caption,
+    node_columns,
     node_roles,
     title_lines,
 )
@@ -71,7 +72,11 @@ def render_png(
         )
     )
 
-    _draw_edges(axes, patches, network, positions, edges)
+    # Bowed edges reach outside the box the nodes occupy, so the points they
+    # pass through are collected and fed into the axis limits. Sizing the
+    # axes from node positions alone clips long curves and drops their labels
+    # on top of the legend.
+    curve_extremes = _draw_edges(axes, patches, network, positions, edges)
     _draw_nodes(axes, network, positions, roles)
     _finish(
         pyplot,
@@ -79,6 +84,7 @@ def render_png(
         lines,
         network,
         positions,
+        curve_extremes,
         title_lines(network, mode, cheapest_cost, cut_total, len(cut_edges)),
         any(not role.reachable for role in roles.values()),
     )
@@ -119,9 +125,14 @@ def _scaled(position: tuple[float, float]) -> tuple[float, float]:
     return x * COLUMN_SPACING, y * ROW_SPACING
 
 
-def _draw_edges(axes, patches, network, positions, edges) -> None:
-    """Arrows first, so the node boxes drawn later hide their endpoints."""
+def _draw_edges(axes, patches, network, positions, edges) -> list[tuple[float, float]]:
+    """Arrows first, so the node boxes drawn later hide their endpoints.
+
+    Returns the halfway point of every curve, which is its furthest excursion
+    from the straight chord and therefore what the axis limits must allow for.
+    """
     curvature = _curvatures(network)
+    extremes: list[tuple[float, float]] = []
 
     for index, edge in enumerate(network.edges):
         role = edges[index]
@@ -138,7 +149,9 @@ def _draw_edges(axes, patches, network, positions, edges) -> None:
         axes.add_patch(
             _arrow(patches, start, end, rad, role.colour, role.width, 2)
         )
-        _label_edge(axes, start, end, rad, str(edge.difficulty), role)
+        extremes.append(_label_edge(axes, start, end, rad, str(edge.difficulty), role))
+
+    return extremes
 
 
 def _arrow(patches, start, end, rad, colour, width, zorder):
@@ -186,10 +199,40 @@ def _curvatures(network: Network) -> dict[int, float]:
         for position, index in enumerate(members):
             step = ((position + 1) // 2) * 0.3
             curvature[index] = (step if position % 2 else -step) or 0.001
+
+    _bow_long_edges(network, curvature)
     return curvature
 
 
-def _label_edge(axes, start, end, rad, text, role) -> None:
+def _bow_long_edges(network: Network, curvature: dict[int, float]) -> None:
+    """Arc edges that skip columns clear of the boxes they pass.
+
+    A straight line from column 1 to column 4 runs behind whatever sits in
+    columns 2 and 3, and reads as though it stops there. That is exactly
+    backwards for the case this most often applies to: a shortcut edge that
+    bypasses an intermediate control is the single most important thing such
+    a diagram has to show, and drawing it through that control hides it.
+
+    The bow is pushed away from the vertical middle of the picture, which is
+    where the columns are busiest. The sign mapping was established the same
+    way as the label offset, by drawing it and looking: for a left-to-right
+    edge a positive rad bows downwards.
+    """
+    columns = node_columns(network)
+    positions = layered_positions(network)
+
+    for index, edge in enumerate(network.edges):
+        span = abs(columns[edge.target] - columns[edge.source])
+        if span < 2 or abs(curvature[index]) > 0.2:
+            continue
+        start, end = positions[edge.source], positions[edge.target]
+        away_from_middle_is_down = (start[1] + end[1]) / 2 <= 0
+        rightwards = end[0] > start[0]
+        sign = 1 if away_from_middle_is_down == rightwards else -1
+        curvature[index] = sign * min(0.09 * span, 0.32)
+
+
+def _label_edge(axes, start, end, rad, text, role) -> tuple[float, float]:
     midpoint = ((start[0] + end[0]) / 2, (start[1] + end[1]) / 2)
     # Put the label on the curve, not on the straight chord: with several
     # edges between the same two boxes, a label on the chord sits between the
@@ -213,6 +256,7 @@ def _label_edge(axes, start, end, rad, text, role) -> None:
         bbox={"boxstyle": "round,pad=0.18", "fc": "white", "ec": "none", "alpha": 0.85},
         zorder=4,
     )
+    return (midpoint[0] + offset[0], midpoint[1] + offset[1])
 
 
 def _draw_nodes(axes, network, positions, roles) -> None:
@@ -237,7 +281,9 @@ def _draw_nodes(axes, network, positions, roles) -> None:
         )
 
 
-def _finish(pyplot, axes, lines, network, positions, title, has_unreachable) -> None:
+def _finish(
+    pyplot, axes, lines, network, positions, curve_extremes, title, has_unreachable
+) -> None:
     handles = [
         lines.Line2D([], [], color=CUT_COLOUR, lw=3.5, label="in the minimum fix set"),
         lines.Line2D([], [], color=PATH_COLOUR, lw=2.4, label="on the cheapest attack path"),
@@ -260,8 +306,9 @@ def _finish(pyplot, axes, lines, network, positions, title, has_unreachable) -> 
     )
     axes.set_title("\n".join(title), fontsize=11, pad=16)
 
-    xs = [x for x, _ in map(_scaled, positions.values())]
-    ys = [y for _, y in map(_scaled, positions.values())]
+    points = [_scaled(p) for p in positions.values()] + list(curve_extremes)
+    xs = [x for x, _ in points]
+    ys = [y for _, y in points]
     axes.set_xlim(min(xs) - 1.6, max(xs) + 1.6)
     axes.set_ylim(min(ys) - 0.85, max(ys) + 0.85)
     axes.set_axis_off()

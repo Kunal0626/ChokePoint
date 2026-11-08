@@ -1,0 +1,78 @@
+{
+  "name": "home-lab",
+  "_about": "A flat home network. Target: the NAS holding family photos.",
+  "_scales": "See examples/README.md for the difficulty and fix-cost rubric.",
+
+  "nodes": [
+    {"id": "internet",    "label": "Internet",              "type": "external"},
+    {"id": "guest_wifi",  "label": "Guest Wi-Fi",           "type": "network"},
+    {"id": "router",      "label": "Home router",           "type": "network-device"},
+    {"id": "pi_hole",     "label": "Raspberry Pi (Pi-hole)","type": "host"},
+    {"id": "laptop_kid",  "label": "Kid's laptop",          "type": "host"},
+    {"id": "laptop_adult","label": "Adult's laptop",        "type": "host"},
+    {"id": "iot_camera",  "label": "IoT camera",            "type": "iot"},
+    {"id": "smart_tv",    "label": "Smart TV",              "type": "iot"},
+    {"id": "nas",         "label": "NAS (family photos)",   "type": "storage"}
+  ],
+
+  "entry": ["internet", "guest_wifi"],
+  "targets": ["nas"],
+
+  "edges": [
+    {"from": "internet", "to": "router", "difficulty": 6,
+     "technique": "unpatched router firmware",
+     "fix": {"name": "Update router firmware and disable WAN admin", "cost": 1}},
+
+    {"from": "internet", "to": "laptop_kid", "difficulty": 3,
+     "technique": "phishing",
+     "fix": {"name": "Family security awareness and browser hardening", "cost": 2}},
+
+    {"from": "internet", "to": "laptop_adult", "difficulty": 4,
+     "technique": "phishing",
+     "fix": {"name": "Family security awareness and browser hardening", "cost": 2}},
+
+    {"from": "internet", "to": "smart_tv", "difficulty": 7,
+     "technique": "outdated TV firmware",
+     "fix": {"name": "Update TV firmware and disable its app store", "cost": 1}},
+
+    {"from": "guest_wifi", "to": "router", "difficulty": 2,
+     "technique": "guest network not isolated from the main LAN",
+     "fix": {"name": "Enable guest network isolation", "cost": 1}},
+
+    {"from": "guest_wifi", "to": "iot_camera", "difficulty": 1,
+     "technique": "default credentials",
+     "fix": {"name": "Change IoT default passwords", "cost": 1}},
+
+    {"from": "guest_wifi", "to": "pi_hole", "difficulty": 3,
+     "technique": "admin web interface reachable from the guest network",
+     "fix": {"name": "Bind Pi-hole admin interface to the main LAN only", "cost": 1}},
+
+    {"from": "iot_camera", "to": "router", "difficulty": 4,
+     "technique": "UPnP port mapping from the flat LAN",
+     "fix": {"name": "Disable UPnP on the router", "cost": 1}},
+
+    {"from": "pi_hole", "to": "router", "difficulty": 3,
+     "technique": "weak admin password reused on the router",
+     "fix": {"name": "Unique passwords in a password manager", "cost": 2}},
+
+    {"from": "laptop_kid", "to": "laptop_adult", "difficulty": 5,
+     "technique": "shared family password reuse",
+     "fix": {"name": "Unique passwords in a password manager", "cost": 2}},
+
+    {"from": "router", "to": "nas", "difficulty": 3,
+     "technique": "NAS on the same flat network as everything else",
+     "fix": {"name": "Put the NAS on its own VLAN", "cost": 3}},
+
+    {"from": "laptop_kid", "to": "nas", "difficulty": 2,
+     "technique": "SMB share mapped with saved credentials",
+     "fix": {"name": "Remove saved NAS credentials from laptops", "cost": 1}},
+
+    {"from": "laptop_adult", "to": "nas", "difficulty": 2,
+     "technique": "SMB share mapped with saved credentials",
+     "fix": {"name": "Remove saved NAS credentials from laptops", "cost": 1}},
+
+    {"from": "smart_tv", "to": "nas", "difficulty": 3,
+     "technique": "DLNA media share open to the whole LAN",
+     "fix": {"name": "Restrict DLNA to the media folder", "cost": 1}}
+  ]
+}

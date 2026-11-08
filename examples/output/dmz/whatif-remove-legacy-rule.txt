@@ -1,0 +1,16 @@
+==========================================================================
+ ChokePoint what-if: dmz
+ applied fix: Remove the legacy DMZ-to-database firewall rule (cost 1)
+==========================================================================
+
+   Cheapest attack cost before : 7
+   Cheapest attack cost after  : 13
+   Raised the attacker's cost by : +6
+
+   Of the original top 3 paths, 2 of 3 did not use this fix.
+
+   Remaining cheapest routes:
+
+      #1  difficulty  13   Internet -> External firewall -> DMZ mail relay -> Administrator workstation -> Internal database
+      #2  difficulty  20   Internet -> External firewall -> DMZ web server -> Internal firewall -> Internal app server -> Internal database
+      #3  difficulty  20   Internet -> External firewall -> DMZ mail relay -> Internal firewall -> Internal app server -> Internal database

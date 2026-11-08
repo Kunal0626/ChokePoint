@@ -1,0 +1,224 @@
+{
+  "_format": "Capacities are exact. Integer capacities are JSON numbers; fractional ones (capacity_mode=inverse-difficulty) are strings like '1/7'.",
+  "network": "home-lab",
+  "capacity_mode": "fixcost",
+  "k": 3,
+  "target_reachable": true,
+  "cheapest_attack_cost": 5,
+  "attack_paths": [
+    {
+      "total_difficulty": 5,
+      "nodes": [
+        "guest_wifi",
+        "router",
+        "nas"
+      ],
+      "hops": [
+        {
+          "from": "guest_wifi",
+          "to": "router",
+          "difficulty": 2,
+          "technique": "guest network not isolated from the main LAN",
+          "fix": {
+            "name": "Enable guest network isolation",
+            "cost": 1
+          }
+        },
+        {
+          "from": "router",
+          "to": "nas",
+          "difficulty": 3,
+          "technique": "NAS on the same flat network as everything else",
+          "fix": {
+            "name": "Put the NAS on its own VLAN",
+            "cost": 3
+          }
+        }
+      ]
+    },
+    {
+      "total_difficulty": 5,
+      "nodes": [
+        "internet",
+        "laptop_kid",
+        "nas"
+      ],
+      "hops": [
+        {
+          "from": "internet",
+          "to": "laptop_kid",
+          "difficulty": 3,
+          "technique": "phishing",
+          "fix": {
+            "name": "Family security awareness and browser hardening",
+            "cost": 2
+          }
+        },
+        {
+          "from": "laptop_kid",
+          "to": "nas",
+          "difficulty": 2,
+          "technique": "SMB share mapped with saved credentials",
+          "fix": {
+            "name": "Remove saved NAS credentials from laptops",
+            "cost": 1
+          }
+        }
+      ]
+    },
+    {
+      "total_difficulty": 6,
+      "nodes": [
+        "internet",
+        "laptop_adult",
+        "nas"
+      ],
+      "hops": [
+        {
+          "from": "internet",
+          "to": "laptop_adult",
+          "difficulty": 4,
+          "technique": "phishing",
+          "fix": {
+            "name": "Family security awareness and browser hardening",
+            "cost": 2
+          }
+        },
+        {
+          "from": "laptop_adult",
+          "to": "nas",
+          "difficulty": 2,
+          "technique": "SMB share mapped with saved credentials",
+          "fix": {
+            "name": "Remove saved NAS credentials from laptops",
+            "cost": 1
+          }
+        }
+      ]
+    }
+  ],
+  "minimum_fix_set": {
+    "fixes": [
+      {
+        "name": "Put the NAS on its own VLAN",
+        "cost": 3,
+        "edges_closed": 1
+      },
+      {
+        "name": "Remove saved NAS credentials from laptops",
+        "cost": 1,
+        "edges_closed": 2
+      },
+      {
+        "name": "Update TV firmware and disable its app store",
+        "cost": 1,
+        "edges_closed": 1
+      }
+    ],
+    "total_cost": 5,
+    "cut_capacity": 6,
+    "edges_cut": 4,
+    "shares_a_fix_across_edges": true
+  },
+  "single_fix_ranking": [
+    {
+      "name": "Remove saved NAS credentials from laptops",
+      "cost": 1,
+      "edges_removed": 2,
+      "cheapest_after": 5,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 2
+    },
+    {
+      "name": "Family security awareness and browser hardening",
+      "cost": 2,
+      "edges_removed": 2,
+      "cheapest_after": 5,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 2
+    },
+    {
+      "name": "Enable guest network isolation",
+      "cost": 1,
+      "edges_removed": 1,
+      "cheapest_after": 5,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 1
+    },
+    {
+      "name": "Put the NAS on its own VLAN",
+      "cost": 3,
+      "edges_removed": 1,
+      "cheapest_after": 5,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 1
+    },
+    {
+      "name": "Bind Pi-hole admin interface to the main LAN only",
+      "cost": 1,
+      "edges_removed": 1,
+      "cheapest_after": 5,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 0
+    },
+    {
+      "name": "Change IoT default passwords",
+      "cost": 1,
+      "edges_removed": 1,
+      "cheapest_after": 5,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 0
+    },
+    {
+      "name": "Disable UPnP on the router",
+      "cost": 1,
+      "edges_removed": 1,
+      "cheapest_after": 5,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 0
+    },
+    {
+      "name": "Restrict DLNA to the media folder",
+      "cost": 1,
+      "edges_removed": 1,
+      "cheapest_after": 5,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 0
+    },
+    {
+      "name": "Update TV firmware and disable its app store",
+      "cost": 1,
+      "edges_removed": 1,
+      "cheapest_after": 5,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 0
+    },
+    {
+      "name": "Update router firmware and disable WAN admin",
+      "cost": 1,
+      "edges_removed": 1,
+      "cheapest_after": 5,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 0
+    },
+    {
+      "name": "Unique passwords in a password manager",
+      "cost": 2,
+      "edges_removed": 2,
+      "cheapest_after": 5,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 0
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+digraph chokepoint {
+  rankdir=LR;
+  labelloc="t";
+  label="ChokePoint: dmz  (capacity mode: fixcost)\ncheapest attack cost 7  |  minimum fix set: 3 fixes, total cost 8";
+  fontname="Helvetica";
+  fontsize=13;
+  node [fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  "internet" [label="Internet\n[internet]", shape="box", style="filled,rounded,bold", fillcolor="#d5f5e3", color="#1e8449", penwidth="2"];
+  "fw_ext" [label="External firewall\n[fw_ext]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "dmz_web" [label="DMZ web server\n[dmz_web]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "dmz_mail" [label="DMZ mail relay\n[dmz_mail]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "fw_int" [label="Internal firewall\n[fw_int]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "app_internal" [label="Internal app server\n[app_internal]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "admin_ws" [label="Administrator workstation\n[admin_ws]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "db_internal" [label="Internal database\n[db_internal]", shape="doubleoctagon", style="filled,bold", fillcolor="#fadbd8", color="#c0392b", penwidth="2"];
+
+  "internet" -> "fw_ext" [label="1", color="#2980b9", penwidth="2.4", tooltip="send traffic to published services | fix: Withdraw all internet-facing services (not practical) (cost 40)"];
+  "fw_ext" -> "dmz_web" [label="4", color="#2980b9", penwidth="2.4", tooltip="unpatched web application | fix: Patch the DMZ web application and deploy a WAF (cost 5)"];
+  "fw_ext" -> "dmz_mail" [label="4", color="#c0392b", penwidth="3.5", tooltip="phishing relayed through the mail gateway | fix: Mail filtering and DMARC enforcement (cost 4)", fontcolor="#c0392b"];
+  "dmz_web" -> "fw_int" [label="7", color="#7f8c8d", penwidth="0.9", tooltip="pivot attempt through the internal firewall | fix: Review and tighten the internal firewall ruleset (cost 4)"];
+  "dmz_mail" -> "fw_int" [label="7", color="#7f8c8d", penwidth="0.9", tooltip="pivot attempt through the internal firewall | fix: Review and tighten the internal firewall ruleset (cost 4)"];
+  "fw_int" -> "app_internal" [label="5", color="#7f8c8d", penwidth="0.9", tooltip="abuse permitted application traffic | fix: Application-layer inspection on the internal firewall (cost 5)"];
+  "app_internal" -> "db_internal" [label="3", color="#c0392b", penwidth="3.5", tooltip="application database credentials | fix: Least-privilege database account for the application (cost 3)", fontcolor="#c0392b"];
+  "dmz_web" -> "db_internal" [label="2", color="#c0392b:#2980b9", penwidth="3.5", tooltip="legacy firewall rule left open after a migration | fix: Remove the legacy DMZ-to-database firewall rule (cost 1)", fontcolor="#c0392b"];
+  "dmz_mail" -> "admin_ws" [label="6", color="#7f8c8d", penwidth="0.9", tooltip="phishing an administrator | fix: Privileged access workstations for administrators (cost 6)"];
+  "admin_ws" -> "db_internal" [label="2", color="#7f8c8d", penwidth="0.9", tooltip="administrators hold standing database access | fix: Just-in-time database access (cost 4)"];
+
+  { rank=min; "internet"; }
+  { rank=max; "db_internal"; }
+
+  subgraph cluster_legend {
+    label="Legend";
+    fontsize=10;
+    style=dashed;
+    color="#bdc3c7";
+    lg_cut_a [shape=point, width=0.01, label="", color="#ffffff"]; lg_cut_b [shape=point, width=0.01, label="", color="#ffffff"];
+    lg_path_a [shape=point, width=0.01, label="", color="#ffffff"]; lg_path_b [shape=point, width=0.01, label="", color="#ffffff"];
+    lg_both_a [shape=point, width=0.01, label="", color="#ffffff"]; lg_both_b [shape=point, width=0.01, label="", color="#ffffff"];
+    lg_cut_a -> lg_cut_b [label=" in the minimum fix set", color="#c0392b", penwidth=3.5];
+    lg_path_a -> lg_path_b [label=" on the cheapest attack path", color="#2980b9", penwidth=2.4];
+    lg_both_a -> lg_both_b [label=" both", color="#c0392b:#2980b9", penwidth=3.5];
+    lg_entry [label="entry point", shape=box, style="filled,rounded,bold", fillcolor="#d5f5e3", color="#1e8449", fontsize=9];
+    lg_target [label="target", shape=doubleoctagon, style="filled,bold", fillcolor="#fadbd8", color="#c0392b", fontsize=9];
+  }
+}

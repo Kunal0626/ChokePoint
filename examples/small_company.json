@@ -1,0 +1,79 @@
+{
+  "name": "small-company",
+  "_about": "A 150-person company with a traditional Windows estate. Target: the production database.",
+  "_scales": "See examples/README.md for the difficulty and fix-cost rubric.",
+
+  "nodes": [
+    {"id": "internet",     "label": "Internet",             "type": "external"},
+    {"id": "web",          "label": "Public web server",    "type": "server"},
+    {"id": "owa",          "label": "Webmail portal",       "type": "server"},
+    {"id": "vpn",          "label": "VPN concentrator",     "type": "network-device"},
+    {"id": "mail",         "label": "Mail server",          "type": "server"},
+    {"id": "workstations", "label": "Employee workstations","type": "workstation"},
+    {"id": "fileserver",   "label": "File server",          "type": "server"},
+    {"id": "dc",           "label": "Domain controller",    "type": "server"},
+    {"id": "backup",       "label": "Backup server",        "type": "server"},
+    {"id": "db_prod",      "label": "Production database",  "type": "database"}
+  ],
+
+  "entry": ["internet"],
+  "targets": ["db_prod"],
+
+  "edges": [
+    {"from": "internet", "to": "web", "difficulty": 4,
+     "technique": "unpatched web application",
+     "fix": {"name": "Patch web application and deploy a WAF", "cost": 5}},
+
+    {"from": "internet", "to": "owa", "difficulty": 4,
+     "technique": "password spraying against webmail",
+     "fix": {"name": "Enforce MFA on all external logins", "cost": 3}},
+
+    {"from": "internet", "to": "vpn", "difficulty": 4,
+     "technique": "password spraying against the VPN",
+     "fix": {"name": "Enforce MFA on all external logins", "cost": 3}},
+
+    {"from": "internet", "to": "mail", "difficulty": 3,
+     "technique": "phishing",
+     "fix": {"name": "Mail filtering and phishing training", "cost": 5}},
+
+    {"from": "mail", "to": "workstations", "difficulty": 3,
+     "technique": "malicious attachment opened by a user",
+     "fix": {"name": "Block Office macros and deploy EDR", "cost": 4}},
+
+    {"from": "owa", "to": "workstations", "difficulty": 5,
+     "technique": "internal phishing from a trusted mailbox",
+     "fix": {"name": "Block Office macros and deploy EDR", "cost": 4}},
+
+    {"from": "vpn", "to": "workstations", "difficulty": 2,
+     "technique": "VPN clients land on the flat user VLAN",
+     "fix": {"name": "Move VPN clients to a restricted VLAN", "cost": 3}},
+
+    {"from": "web", "to": "db_prod", "difficulty": 5,
+     "technique": "database credentials in the application config file",
+     "fix": {"name": "Move secrets to a vault and restrict the database to the app subnet", "cost": 4}},
+
+    {"from": "workstations", "to": "fileserver", "difficulty": 2,
+     "technique": "SMB share readable by all staff",
+     "fix": {"name": "Tighten file share permissions", "cost": 2}},
+
+    {"from": "workstations", "to": "dc", "difficulty": 6,
+     "technique": "credential dumping and pass-the-hash",
+     "fix": {"name": "Deploy LAPS and Credential Guard", "cost": 6}},
+
+    {"from": "fileserver", "to": "db_prod", "difficulty": 4,
+     "technique": "database connection string saved in a spreadsheet",
+     "fix": {"name": "Secrets hygiene audit of the file server", "cost": 2}},
+
+    {"from": "dc", "to": "db_prod", "difficulty": 2,
+     "technique": "domain administrators can log in anywhere",
+     "fix": {"name": "Tiered admin model, database not domain-joined", "cost": 8}},
+
+    {"from": "dc", "to": "backup", "difficulty": 2,
+     "technique": "domain administrators own the backup server",
+     "fix": {"name": "Separate backup credentials from the domain", "cost": 5}},
+
+    {"from": "backup", "to": "db_prod", "difficulty": 3,
+     "technique": "restore the production database from backup",
+     "fix": {"name": "Scope the backup agent's permissions", "cost": 3}}
+  ]
+}

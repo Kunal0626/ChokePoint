@@ -1,0 +1,52 @@
+digraph chokepoint {
+  rankdir=LR;
+  labelloc="t";
+  label="ChokePoint: home-lab  (capacity mode: fixcost)\ncheapest attack cost 5  |  minimum fix set: 4 fixes, total cost 5";
+  fontname="Helvetica";
+  fontsize=13;
+  node [fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  "internet" [label="Internet\n[internet]", shape="box", style="filled,rounded,bold", fillcolor="#d5f5e3", color="#1e8449", penwidth="2"];
+  "guest_wifi" [label="Guest Wi-Fi\n[guest_wifi]", shape="box", style="filled,rounded,bold", fillcolor="#d5f5e3", color="#1e8449", penwidth="2"];
+  "router" [label="Home router\n[router]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "pi_hole" [label="Raspberry Pi (Pi-hole)\n[pi_hole]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "laptop_kid" [label="Kid's laptop\n[laptop_kid]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "laptop_adult" [label="Adult's laptop\n[laptop_adult]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "iot_camera" [label="IoT camera\n[iot_camera]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "smart_tv" [label="Smart TV\n[smart_tv]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "nas" [label="NAS (family photos)\n[nas]", shape="doubleoctagon", style="filled,bold", fillcolor="#fadbd8", color="#c0392b", penwidth="2"];
+
+  "internet" -> "router" [label="6", color="#7f8c8d", penwidth="0.9", tooltip="unpatched router firmware | fix: Update router firmware and disable WAN admin (cost 1)"];
+  "internet" -> "laptop_kid" [label="3", color="#7f8c8d", penwidth="0.9", tooltip="phishing | fix: Family security awareness and browser hardening (cost 2)"];
+  "internet" -> "laptop_adult" [label="4", color="#7f8c8d", penwidth="0.9", tooltip="phishing | fix: Family security awareness and browser hardening (cost 2)"];
+  "internet" -> "smart_tv" [label="7", color="#c0392b", penwidth="3.5", tooltip="outdated TV firmware | fix: Update TV firmware and disable its app store (cost 1)", fontcolor="#c0392b"];
+  "guest_wifi" -> "router" [label="2", color="#2980b9", penwidth="2.4", tooltip="guest network not isolated from the main LAN | fix: Enable guest network isolation (cost 1)"];
+  "guest_wifi" -> "iot_camera" [label="1", color="#7f8c8d", penwidth="0.9", tooltip="default credentials | fix: Change IoT default passwords (cost 1)"];
+  "guest_wifi" -> "pi_hole" [label="3", color="#7f8c8d", penwidth="0.9", tooltip="admin web interface reachable from the guest network | fix: Bind Pi-hole admin interface to the main LAN only (cost 1)"];
+  "iot_camera" -> "router" [label="4", color="#7f8c8d", penwidth="0.9", tooltip="UPnP port mapping from the flat LAN | fix: Disable UPnP on the router (cost 1)"];
+  "pi_hole" -> "router" [label="3", color="#7f8c8d", penwidth="0.9", tooltip="weak admin password reused on the router | fix: Unique passwords in a password manager (cost 2)"];
+  "laptop_kid" -> "laptop_adult" [label="5", color="#7f8c8d", penwidth="0.9", tooltip="shared family password reuse | fix: Unique passwords in a password manager (cost 2)"];
+  "router" -> "nas" [label="3", color="#c0392b:#2980b9", penwidth="3.5", tooltip="NAS on the same flat network as everything else | fix: Put the NAS on its own VLAN (cost 3)", fontcolor="#c0392b"];
+  "laptop_kid" -> "nas" [label="2", color="#c0392b", penwidth="3.5", tooltip="SMB share mapped with saved credentials | fix: Remove saved NAS credentials from laptops (cost 1)", fontcolor="#c0392b"];
+  "laptop_adult" -> "nas" [label="2", color="#c0392b", penwidth="3.5", tooltip="SMB share mapped with saved credentials | fix: Remove saved NAS credentials from laptops (cost 1)", fontcolor="#c0392b"];
+  "smart_tv" -> "nas" [label="3", color="#7f8c8d", penwidth="0.9", tooltip="DLNA media share open to the whole LAN | fix: Restrict DLNA to the media folder (cost 1)"];
+
+  { rank=min; "internet" "guest_wifi"; }
+  { rank=max; "nas"; }
+
+  subgraph cluster_legend {
+    label="Legend";
+    fontsize=10;
+    style=dashed;
+    color="#bdc3c7";
+    lg_cut_a [shape=point, width=0.01, label="", color="#ffffff"]; lg_cut_b [shape=point, width=0.01, label="", color="#ffffff"];
+    lg_path_a [shape=point, width=0.01, label="", color="#ffffff"]; lg_path_b [shape=point, width=0.01, label="", color="#ffffff"];
+    lg_both_a [shape=point, width=0.01, label="", color="#ffffff"]; lg_both_b [shape=point, width=0.01, label="", color="#ffffff"];
+    lg_cut_a -> lg_cut_b [label=" in the minimum fix set", color="#c0392b", penwidth=3.5];
+    lg_path_a -> lg_path_b [label=" on the cheapest attack path", color="#2980b9", penwidth=2.4];
+    lg_both_a -> lg_both_b [label=" both", color="#c0392b:#2980b9", penwidth=3.5];
+    lg_entry [label="entry point", shape=box, style="filled,rounded,bold", fillcolor="#d5f5e3", color="#1e8449", fontsize=9];
+    lg_target [label="target", shape=doubleoctagon, style="filled,bold", fillcolor="#fadbd8", color="#c0392b", fontsize=9];
+  }
+}

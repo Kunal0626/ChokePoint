@@ -1,0 +1,53 @@
+digraph chokepoint {
+  rankdir=LR;
+  labelloc="t";
+  label="ChokePoint: small-company  (capacity mode: fixcost)\ncheapest attack cost 9  |  minimum fix set: 3 fixes, total cost 12";
+  fontname="Helvetica";
+  fontsize=13;
+  node [fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  "internet" [label="Internet\n[internet]", shape="box", style="filled,rounded,bold", fillcolor="#d5f5e3", color="#1e8449", penwidth="2"];
+  "web" [label="Public web server\n[web]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "owa" [label="Webmail portal\n[owa]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "vpn" [label="VPN concentrator\n[vpn]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "mail" [label="Mail server\n[mail]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "workstations" [label="Employee workstations\n[workstations]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "fileserver" [label="File server\n[fileserver]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "dc" [label="Domain controller\n[dc]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "backup" [label="Backup server\n[backup]", shape="box", style="filled,rounded", fillcolor="#ecf0f1", color="#34495e", penwidth="1"];
+  "db_prod" [label="Production database\n[db_prod]", shape="doubleoctagon", style="filled,bold", fillcolor="#fadbd8", color="#c0392b", penwidth="2"];
+
+  "internet" -> "web" [label="4", color="#2980b9", penwidth="2.4", tooltip="unpatched web application | fix: Patch web application and deploy a WAF (cost 5)"];
+  "internet" -> "owa" [label="4", color="#7f8c8d", penwidth="0.9", tooltip="password spraying against webmail | fix: Enforce MFA on all external logins (cost 3)"];
+  "internet" -> "vpn" [label="4", color="#7f8c8d", penwidth="0.9", tooltip="password spraying against the VPN | fix: Enforce MFA on all external logins (cost 3)"];
+  "internet" -> "mail" [label="3", color="#7f8c8d", penwidth="0.9", tooltip="phishing | fix: Mail filtering and phishing training (cost 5)"];
+  "mail" -> "workstations" [label="3", color="#7f8c8d", penwidth="0.9", tooltip="malicious attachment opened by a user | fix: Block Office macros and deploy EDR (cost 4)"];
+  "owa" -> "workstations" [label="5", color="#7f8c8d", penwidth="0.9", tooltip="internal phishing from a trusted mailbox | fix: Block Office macros and deploy EDR (cost 4)"];
+  "vpn" -> "workstations" [label="2", color="#7f8c8d", penwidth="0.9", tooltip="VPN clients land on the flat user VLAN | fix: Move VPN clients to a restricted VLAN (cost 3)"];
+  "web" -> "db_prod" [label="5", color="#c0392b:#2980b9", penwidth="3.5", tooltip="database credentials in the application config file | fix: Move secrets to a vault and restrict the database to the app subnet (cost 4)", fontcolor="#c0392b"];
+  "workstations" -> "fileserver" [label="2", color="#c0392b", penwidth="3.5", tooltip="SMB share readable by all staff | fix: Tighten file share permissions (cost 2)", fontcolor="#c0392b"];
+  "workstations" -> "dc" [label="6", color="#c0392b", penwidth="3.5", tooltip="credential dumping and pass-the-hash | fix: Deploy LAPS and Credential Guard (cost 6)", fontcolor="#c0392b"];
+  "fileserver" -> "db_prod" [label="4", color="#7f8c8d", penwidth="0.9", tooltip="database connection string saved in a spreadsheet | fix: Secrets hygiene audit of the file server (cost 2)"];
+  "dc" -> "db_prod" [label="2", color="#7f8c8d", penwidth="0.9", tooltip="domain administrators can log in anywhere | fix: Tiered admin model, database not domain-joined (cost 8)"];
+  "dc" -> "backup" [label="2", color="#7f8c8d", penwidth="0.9", tooltip="domain administrators own the backup server | fix: Separate backup credentials from the domain (cost 5)"];
+  "backup" -> "db_prod" [label="3", color="#7f8c8d", penwidth="0.9", tooltip="restore the production database from backup | fix: Scope the backup agent's permissions (cost 3)"];
+
+  { rank=min; "internet"; }
+  { rank=max; "db_prod"; }
+
+  subgraph cluster_legend {
+    label="Legend";
+    fontsize=10;
+    style=dashed;
+    color="#bdc3c7";
+    lg_cut_a [shape=point, width=0.01, label="", color="#ffffff"]; lg_cut_b [shape=point, width=0.01, label="", color="#ffffff"];
+    lg_path_a [shape=point, width=0.01, label="", color="#ffffff"]; lg_path_b [shape=point, width=0.01, label="", color="#ffffff"];
+    lg_both_a [shape=point, width=0.01, label="", color="#ffffff"]; lg_both_b [shape=point, width=0.01, label="", color="#ffffff"];
+    lg_cut_a -> lg_cut_b [label=" in the minimum fix set", color="#c0392b", penwidth=3.5];
+    lg_path_a -> lg_path_b [label=" on the cheapest attack path", color="#2980b9", penwidth=2.4];
+    lg_both_a -> lg_both_b [label=" both", color="#c0392b:#2980b9", penwidth=3.5];
+    lg_entry [label="entry point", shape=box, style="filled,rounded,bold", fillcolor="#d5f5e3", color="#1e8449", fontsize=9];
+    lg_target [label="target", shape=doubleoctagon, style="filled,bold", fillcolor="#fadbd8", color="#c0392b", fontsize=9];
+  }
+}

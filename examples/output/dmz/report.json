@@ -1,0 +1,272 @@
+{
+  "_format": "Capacities are exact. Integer capacities are JSON numbers; fractional ones (capacity_mode=inverse-difficulty) are strings like '1/7'.",
+  "network": "dmz",
+  "capacity_mode": "fixcost",
+  "k": 3,
+  "target_reachable": true,
+  "cheapest_attack_cost": 7,
+  "attack_paths": [
+    {
+      "total_difficulty": 7,
+      "nodes": [
+        "internet",
+        "fw_ext",
+        "dmz_web",
+        "db_internal"
+      ],
+      "hops": [
+        {
+          "from": "internet",
+          "to": "fw_ext",
+          "difficulty": 1,
+          "technique": "send traffic to published services",
+          "fix": {
+            "name": "Withdraw all internet-facing services (not practical)",
+            "cost": 40
+          }
+        },
+        {
+          "from": "fw_ext",
+          "to": "dmz_web",
+          "difficulty": 4,
+          "technique": "unpatched web application",
+          "fix": {
+            "name": "Patch the DMZ web application and deploy a WAF",
+            "cost": 5
+          }
+        },
+        {
+          "from": "dmz_web",
+          "to": "db_internal",
+          "difficulty": 2,
+          "technique": "legacy firewall rule left open after a migration",
+          "fix": {
+            "name": "Remove the legacy DMZ-to-database firewall rule",
+            "cost": 1
+          }
+        }
+      ]
+    },
+    {
+      "total_difficulty": 13,
+      "nodes": [
+        "internet",
+        "fw_ext",
+        "dmz_mail",
+        "admin_ws",
+        "db_internal"
+      ],
+      "hops": [
+        {
+          "from": "internet",
+          "to": "fw_ext",
+          "difficulty": 1,
+          "technique": "send traffic to published services",
+          "fix": {
+            "name": "Withdraw all internet-facing services (not practical)",
+            "cost": 40
+          }
+        },
+        {
+          "from": "fw_ext",
+          "to": "dmz_mail",
+          "difficulty": 4,
+          "technique": "phishing relayed through the mail gateway",
+          "fix": {
+            "name": "Mail filtering and DMARC enforcement",
+            "cost": 4
+          }
+        },
+        {
+          "from": "dmz_mail",
+          "to": "admin_ws",
+          "difficulty": 6,
+          "technique": "phishing an administrator",
+          "fix": {
+            "name": "Privileged access workstations for administrators",
+            "cost": 6
+          }
+        },
+        {
+          "from": "admin_ws",
+          "to": "db_internal",
+          "difficulty": 2,
+          "technique": "administrators hold standing database access",
+          "fix": {
+            "name": "Just-in-time database access",
+            "cost": 4
+          }
+        }
+      ]
+    },
+    {
+      "total_difficulty": 20,
+      "nodes": [
+        "internet",
+        "fw_ext",
+        "dmz_web",
+        "fw_int",
+        "app_internal",
+        "db_internal"
+      ],
+      "hops": [
+        {
+          "from": "internet",
+          "to": "fw_ext",
+          "difficulty": 1,
+          "technique": "send traffic to published services",
+          "fix": {
+            "name": "Withdraw all internet-facing services (not practical)",
+            "cost": 40
+          }
+        },
+        {
+          "from": "fw_ext",
+          "to": "dmz_web",
+          "difficulty": 4,
+          "technique": "unpatched web application",
+          "fix": {
+            "name": "Patch the DMZ web application and deploy a WAF",
+            "cost": 5
+          }
+        },
+        {
+          "from": "dmz_web",
+          "to": "fw_int",
+          "difficulty": 7,
+          "technique": "pivot attempt through the internal firewall",
+          "fix": {
+            "name": "Review and tighten the internal firewall ruleset",
+            "cost": 4
+          }
+        },
+        {
+          "from": "fw_int",
+          "to": "app_internal",
+          "difficulty": 5,
+          "technique": "abuse permitted application traffic",
+          "fix": {
+            "name": "Application-layer inspection on the internal firewall",
+            "cost": 5
+          }
+        },
+        {
+          "from": "app_internal",
+          "to": "db_internal",
+          "difficulty": 3,
+          "technique": "application database credentials",
+          "fix": {
+            "name": "Least-privilege database account for the application",
+            "cost": 3
+          }
+        }
+      ]
+    }
+  ],
+  "minimum_fix_set": {
+    "fixes": [
+      {
+        "name": "Mail filtering and DMARC enforcement",
+        "cost": 4,
+        "edges_closed": 1
+      },
+      {
+        "name": "Least-privilege database account for the application",
+        "cost": 3,
+        "edges_closed": 1
+      },
+      {
+        "name": "Remove the legacy DMZ-to-database firewall rule",
+        "cost": 1,
+        "edges_closed": 1
+      }
+    ],
+    "total_cost": 8,
+    "cut_capacity": 8,
+    "edges_cut": 3,
+    "shares_a_fix_across_edges": false
+  },
+  "single_fix_ranking": [
+    {
+      "name": "Withdraw all internet-facing services (not practical)",
+      "cost": 40,
+      "edges_removed": 1,
+      "cheapest_after": null,
+      "raises_cheapest_by": null,
+      "disconnects": true,
+      "top_paths_hit": 3
+    },
+    {
+      "name": "Patch the DMZ web application and deploy a WAF",
+      "cost": 5,
+      "edges_removed": 1,
+      "cheapest_after": 13,
+      "raises_cheapest_by": 6,
+      "disconnects": false,
+      "top_paths_hit": 2
+    },
+    {
+      "name": "Remove the legacy DMZ-to-database firewall rule",
+      "cost": 1,
+      "edges_removed": 1,
+      "cheapest_after": 13,
+      "raises_cheapest_by": 6,
+      "disconnects": false,
+      "top_paths_hit": 1
+    },
+    {
+      "name": "Least-privilege database account for the application",
+      "cost": 3,
+      "edges_removed": 1,
+      "cheapest_after": 7,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 1
+    },
+    {
+      "name": "Just-in-time database access",
+      "cost": 4,
+      "edges_removed": 1,
+      "cheapest_after": 7,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 1
+    },
+    {
+      "name": "Mail filtering and DMARC enforcement",
+      "cost": 4,
+      "edges_removed": 1,
+      "cheapest_after": 7,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 1
+    },
+    {
+      "name": "Review and tighten the internal firewall ruleset",
+      "cost": 4,
+      "edges_removed": 2,
+      "cheapest_after": 7,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 1
+    },
+    {
+      "name": "Application-layer inspection on the internal firewall",
+      "cost": 5,
+      "edges_removed": 1,
+      "cheapest_after": 7,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 1
+    },
+    {
+      "name": "Privileged access workstations for administrators",
+      "cost": 6,
+      "edges_removed": 1,
+      "cheapest_after": 7,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 1
+    }
+  ]
+}

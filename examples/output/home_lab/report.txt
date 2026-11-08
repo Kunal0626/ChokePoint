@@ -1,0 +1,64 @@
+==========================================================================
+ ChokePoint: home-lab
+ capacity mode: fixcost     top-k requested: 3
+==========================================================================
+
+1. ATTACK PATHS                                                cheapest: 5
+--------------------------------------------------------------------------
+
+   Cheapest route, hop by hop:
+
+      Guest Wi-Fi [guest_wifi]
+        |  difficulty 2   guest network not isolated from the main LAN
+        |  fix: Enable guest network isolation (cost 1)
+        v
+      Home router [router]
+        |  difficulty 3   NAS on the same flat network as everything else
+        |  fix: Put the NAS on its own VLAN (cost 3)
+        v
+      NAS (family photos) [nas]   <-- TARGET
+
+   Top 3 distinct loopless paths:
+
+      #1  difficulty   5   Guest Wi-Fi -> Home router -> NAS (family photos)
+      #2  difficulty   5   Internet -> Kid's laptop -> NAS (family photos)
+      #3  difficulty   6   Internet -> Adult's laptop -> NAS (family photos)
+
+2. MINIMUM FIX SET (min-cut)                                 total cost: 5
+--------------------------------------------------------------------------
+
+   Applying all of these cuts every route to every target.
+   No cheaper set of fixes achieves that.
+
+      cost   3   Put the NAS on its own VLAN
+      cost   1   Remove saved NAS credentials from laptops   (closes 2 links)
+      cost   1   Update TV firmware and disable its app store
+      --------
+      total  5
+
+   Note: the cut spans 4 edges but only 3 distinct fixes.
+   Max-flow minimised the per-edge total (6); the real bill is
+   5, because a shared fix is paid once. See docs/MINCUT_VS_GREEDY.md.
+
+3. SINGLE-FIX RANKING
+--------------------------------------------------------------------------
+
+   Each fix applied alone. Ranked by how much it raises the
+   attacker's cheapest cost, then by reach across the top 3.
+
+      fix                        cost  after  raises   paths
+      ------------------------------------------------------
+      Remove saved NAS crede...     1      5      +0     2/3
+      Family security awaren...     2      5      +0     2/3
+      Enable guest network i...     1      5      +0     1/3
+      Put the NAS on its own...     3      5      +0     1/3
+      Bind Pi-hole admin int...     1      5      +0     0/3
+      Change IoT default pas...     1      5      +0     0/3
+      Disable UPnP on the ro...     1      5      +0     0/3
+      Restrict DLNA to the m...     1      5      +0     0/3
+      Update TV firmware and...     1      5      +0     0/3
+      Update router firmware...     1      5      +0     0/3
+      Unique passwords in a ...     2      5      +0     0/3
+
+   A fix that raises the cost by +0 is not useless: it may be
+   needed in the cut because another route is equally cheap.

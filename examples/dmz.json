@@ -1,0 +1,64 @@
+{
+  "name": "dmz",
+  "_about": "Classic internet -> firewall -> DMZ -> internal firewall -> internal network. Target: the internal database.",
+  "_about_shortcut": "One deliberate misconfiguration creates a shortcut past the internal firewall. The tool should find it.",
+  "_scales": "See examples/README.md for the difficulty and fix-cost rubric.",
+
+  "nodes": [
+    {"id": "internet",     "label": "Internet",                 "type": "external"},
+    {"id": "fw_ext",       "label": "External firewall",        "type": "firewall"},
+    {"id": "dmz_web",      "label": "DMZ web server",           "type": "server"},
+    {"id": "dmz_mail",     "label": "DMZ mail relay",           "type": "server"},
+    {"id": "fw_int",       "label": "Internal firewall",        "type": "firewall"},
+    {"id": "app_internal", "label": "Internal app server",      "type": "server"},
+    {"id": "admin_ws",     "label": "Administrator workstation","type": "workstation"},
+    {"id": "db_internal",  "label": "Internal database",        "type": "database"}
+  ],
+
+  "entry": ["internet"],
+  "targets": ["db_internal"],
+
+  "edges": [
+    {"from": "internet", "to": "fw_ext", "difficulty": 1,
+     "technique": "send traffic to published services",
+     "_why_cost": "Deliberately prohibitive. The firewall must accept traffic for the business to function, so this edge is not practically cuttable. See examples/dmz.md.",
+     "fix": {"name": "Withdraw all internet-facing services (not practical)", "cost": 40}},
+
+    {"from": "fw_ext", "to": "dmz_web", "difficulty": 4,
+     "technique": "unpatched web application",
+     "fix": {"name": "Patch the DMZ web application and deploy a WAF", "cost": 5}},
+
+    {"from": "fw_ext", "to": "dmz_mail", "difficulty": 4,
+     "technique": "phishing relayed through the mail gateway",
+     "fix": {"name": "Mail filtering and DMARC enforcement", "cost": 4}},
+
+    {"from": "dmz_web", "to": "fw_int", "difficulty": 7,
+     "technique": "pivot attempt through the internal firewall",
+     "fix": {"name": "Review and tighten the internal firewall ruleset", "cost": 4}},
+
+    {"from": "dmz_mail", "to": "fw_int", "difficulty": 7,
+     "technique": "pivot attempt through the internal firewall",
+     "fix": {"name": "Review and tighten the internal firewall ruleset", "cost": 4}},
+
+    {"from": "fw_int", "to": "app_internal", "difficulty": 5,
+     "technique": "abuse permitted application traffic",
+     "fix": {"name": "Application-layer inspection on the internal firewall", "cost": 5}},
+
+    {"from": "app_internal", "to": "db_internal", "difficulty": 3,
+     "technique": "application database credentials",
+     "fix": {"name": "Least-privilege database account for the application", "cost": 3}},
+
+    {"from": "dmz_web", "to": "db_internal", "difficulty": 2,
+     "technique": "legacy firewall rule left open after a migration",
+     "_why": "The deliberate misconfiguration. A temporary DMZ-to-database rule from a data migration was never removed.",
+     "fix": {"name": "Remove the legacy DMZ-to-database firewall rule", "cost": 1}},
+
+    {"from": "dmz_mail", "to": "admin_ws", "difficulty": 6,
+     "technique": "phishing an administrator",
+     "fix": {"name": "Privileged access workstations for administrators", "cost": 6}},
+
+    {"from": "admin_ws", "to": "db_internal", "difficulty": 2,
+     "technique": "administrators hold standing database access",
+     "fix": {"name": "Just-in-time database access", "cost": 4}}
+  ]
+}

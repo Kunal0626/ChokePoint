@@ -1,0 +1,277 @@
+{
+  "_format": "Capacities are exact. Integer capacities are JSON numbers; fractional ones (capacity_mode=inverse-difficulty) are strings like '1/7'.",
+  "network": "small-company",
+  "capacity_mode": "fixcost",
+  "k": 3,
+  "target_reachable": true,
+  "cheapest_attack_cost": 9,
+  "attack_paths": [
+    {
+      "total_difficulty": 9,
+      "nodes": [
+        "internet",
+        "web",
+        "db_prod"
+      ],
+      "hops": [
+        {
+          "from": "internet",
+          "to": "web",
+          "difficulty": 4,
+          "technique": "unpatched web application",
+          "fix": {
+            "name": "Patch web application and deploy a WAF",
+            "cost": 5
+          }
+        },
+        {
+          "from": "web",
+          "to": "db_prod",
+          "difficulty": 5,
+          "technique": "database credentials in the application config file",
+          "fix": {
+            "name": "Move secrets to a vault and restrict the database to the app subnet",
+            "cost": 4
+          }
+        }
+      ]
+    },
+    {
+      "total_difficulty": 12,
+      "nodes": [
+        "internet",
+        "mail",
+        "workstations",
+        "fileserver",
+        "db_prod"
+      ],
+      "hops": [
+        {
+          "from": "internet",
+          "to": "mail",
+          "difficulty": 3,
+          "technique": "phishing",
+          "fix": {
+            "name": "Mail filtering and phishing training",
+            "cost": 5
+          }
+        },
+        {
+          "from": "mail",
+          "to": "workstations",
+          "difficulty": 3,
+          "technique": "malicious attachment opened by a user",
+          "fix": {
+            "name": "Block Office macros and deploy EDR",
+            "cost": 4
+          }
+        },
+        {
+          "from": "workstations",
+          "to": "fileserver",
+          "difficulty": 2,
+          "technique": "SMB share readable by all staff",
+          "fix": {
+            "name": "Tighten file share permissions",
+            "cost": 2
+          }
+        },
+        {
+          "from": "fileserver",
+          "to": "db_prod",
+          "difficulty": 4,
+          "technique": "database connection string saved in a spreadsheet",
+          "fix": {
+            "name": "Secrets hygiene audit of the file server",
+            "cost": 2
+          }
+        }
+      ]
+    },
+    {
+      "total_difficulty": 12,
+      "nodes": [
+        "internet",
+        "vpn",
+        "workstations",
+        "fileserver",
+        "db_prod"
+      ],
+      "hops": [
+        {
+          "from": "internet",
+          "to": "vpn",
+          "difficulty": 4,
+          "technique": "password spraying against the VPN",
+          "fix": {
+            "name": "Enforce MFA on all external logins",
+            "cost": 3
+          }
+        },
+        {
+          "from": "vpn",
+          "to": "workstations",
+          "difficulty": 2,
+          "technique": "VPN clients land on the flat user VLAN",
+          "fix": {
+            "name": "Move VPN clients to a restricted VLAN",
+            "cost": 3
+          }
+        },
+        {
+          "from": "workstations",
+          "to": "fileserver",
+          "difficulty": 2,
+          "technique": "SMB share readable by all staff",
+          "fix": {
+            "name": "Tighten file share permissions",
+            "cost": 2
+          }
+        },
+        {
+          "from": "fileserver",
+          "to": "db_prod",
+          "difficulty": 4,
+          "technique": "database connection string saved in a spreadsheet",
+          "fix": {
+            "name": "Secrets hygiene audit of the file server",
+            "cost": 2
+          }
+        }
+      ]
+    }
+  ],
+  "minimum_fix_set": {
+    "fixes": [
+      {
+        "name": "Deploy LAPS and Credential Guard",
+        "cost": 6,
+        "edges_closed": 1
+      },
+      {
+        "name": "Move secrets to a vault and restrict the database to the app subnet",
+        "cost": 4,
+        "edges_closed": 1
+      },
+      {
+        "name": "Tighten file share permissions",
+        "cost": 2,
+        "edges_closed": 1
+      }
+    ],
+    "total_cost": 12,
+    "cut_capacity": 12,
+    "edges_cut": 3,
+    "shares_a_fix_across_edges": false
+  },
+  "single_fix_ranking": [
+    {
+      "name": "Move secrets to a vault and restrict the database to the app subnet",
+      "cost": 4,
+      "edges_removed": 1,
+      "cheapest_after": 12,
+      "raises_cheapest_by": 3,
+      "disconnects": false,
+      "top_paths_hit": 1
+    },
+    {
+      "name": "Patch web application and deploy a WAF",
+      "cost": 5,
+      "edges_removed": 1,
+      "cheapest_after": 12,
+      "raises_cheapest_by": 3,
+      "disconnects": false,
+      "top_paths_hit": 1
+    },
+    {
+      "name": "Secrets hygiene audit of the file server",
+      "cost": 2,
+      "edges_removed": 1,
+      "cheapest_after": 9,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 2
+    },
+    {
+      "name": "Tighten file share permissions",
+      "cost": 2,
+      "edges_removed": 1,
+      "cheapest_after": 9,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 2
+    },
+    {
+      "name": "Enforce MFA on all external logins",
+      "cost": 3,
+      "edges_removed": 2,
+      "cheapest_after": 9,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 1
+    },
+    {
+      "name": "Move VPN clients to a restricted VLAN",
+      "cost": 3,
+      "edges_removed": 1,
+      "cheapest_after": 9,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 1
+    },
+    {
+      "name": "Block Office macros and deploy EDR",
+      "cost": 4,
+      "edges_removed": 2,
+      "cheapest_after": 9,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 1
+    },
+    {
+      "name": "Mail filtering and phishing training",
+      "cost": 5,
+      "edges_removed": 1,
+      "cheapest_after": 9,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 1
+    },
+    {
+      "name": "Scope the backup agent's permissions",
+      "cost": 3,
+      "edges_removed": 1,
+      "cheapest_after": 9,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 0
+    },
+    {
+      "name": "Separate backup credentials from the domain",
+      "cost": 5,
+      "edges_removed": 1,
+      "cheapest_after": 9,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 0
+    },
+    {
+      "name": "Deploy LAPS and Credential Guard",
+      "cost": 6,
+      "edges_removed": 1,
+      "cheapest_after": 9,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 0
+    },
+    {
+      "name": "Tiered admin model, database not domain-joined",
+      "cost": 8,
+      "edges_removed": 1,
+      "cheapest_after": 9,
+      "raises_cheapest_by": 0,
+      "disconnects": false,
+      "top_paths_hit": 0
+    }
+  ]
+}
