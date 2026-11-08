@@ -186,3 +186,63 @@ def test_self_check_failure_exits_3(model, capsys, monkeypatch):
     err = capsys.readouterr().err
     assert "self-check failed" in err
     assert "bug in ChokePoint" in err
+
+
+# ---------------------------------------------------------------------------
+# Picture artifacts from --out
+# ---------------------------------------------------------------------------
+
+
+def test_out_writes_a_dot_file(model, tmp_path, capsys):
+    out_dir = tmp_path / "artifacts"
+    assert main(["analyze", model, "--out", str(out_dir)]) == 0
+    dot = out_dir / "network.dot"
+    assert dot.exists()
+    source = dot.read_text(encoding="utf-8")
+    assert source.startswith("digraph chokepoint {")
+    assert '"internet" -> "web"' in source
+
+
+def test_out_writes_a_picture_by_whichever_route_is_available(model, tmp_path, capsys):
+    """Graphviz if installed, matplotlib otherwise; the test must not assume."""
+    out_dir = tmp_path / "artifacts"
+    assert main(["analyze", model, "--out", str(out_dir)]) == 0
+    err = capsys.readouterr().err
+    assert (out_dir / "network.png").exists()
+    assert ("rendered by Graphviz" in err) or ("matplotlib fallback" in err)
+
+
+def test_missing_graphviz_is_mentioned_but_not_fatal(model, tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr("chokepoint.render_dot.shutil.which", lambda _: None)
+    out_dir = tmp_path / "artifacts"
+    assert main(["analyze", model, "--out", str(out_dir)]) == 0
+    err = capsys.readouterr().err
+    assert "brew install graphviz" in err
+    assert (out_dir / "network.dot").exists()
+    assert (out_dir / "network.png").exists(), "the fallback should still draw"
+
+
+def test_a_graph_too_large_to_draw_still_gets_its_dot_file(tmp_path, capsys, monkeypatch):
+    """The .dot file is the deliverable; the picture is a convenience."""
+    monkeypatch.setattr("chokepoint.render_dot.shutil.which", lambda _: None)
+    size = 70
+    model = {
+        "name": "big",
+        "nodes": [{"id": f"n{i}"} for i in range(size)],
+        "entry": ["n0"],
+        "targets": [f"n{size - 1}"],
+        "edges": [
+            {"from": f"n{i}", "to": f"n{i + 1}", "difficulty": 2}
+            for i in range(size - 1)
+        ],
+    }
+    path = tmp_path / "big.json"
+    path.write_text(json.dumps(model), encoding="utf-8")
+
+    out_dir = tmp_path / "artifacts"
+    assert main(["analyze", str(path), "--out", str(out_dir)]) == 0
+    err = capsys.readouterr().err
+    assert (out_dir / "network.dot").exists()
+    assert not (out_dir / "network.png").exists()
+    assert "no image written" in err
+    assert "render that with Graphviz" in err

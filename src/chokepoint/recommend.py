@@ -105,6 +105,10 @@ class FixSet:
 
     mode: str
     entries: tuple[FixEntry, ...]
+    # Indices into the edges of the network that was analysed. Unlike
+    # PathView, which is deliberately index-free so it can outlive a derived
+    # copy, these exist for the renderer, which only ever draws the original.
+    edge_indices: tuple[int, ...]
     # What max-flow minimised: the sum of per-edge capacities.
     cut_capacity: Capacity
     # What it would actually cost, counting each distinct fix once.
@@ -145,6 +149,9 @@ class Analysis:
     paths: tuple[PathView, ...]
     fix_set: FixSet
     fix_impacts: tuple[FixImpact, ...]
+    # As FixSet.edge_indices: for the renderer, relative to the analysed
+    # network. Empty when no target is reachable.
+    cheapest_edge_indices: tuple[int, ...]
 
     @property
     def reachable(self) -> bool:
@@ -284,6 +291,7 @@ def build_fix_set(network: Network, mode: str) -> FixSet:
     return FixSet(
         mode=mode,
         entries=entries,
+        edge_indices=cut.edge_indices,
         cut_capacity=cut.value,
         deduplicated_cost=sum(entry.cost for entry in entries),
         edge_count=len(cut.edge_indices),
@@ -354,7 +362,9 @@ def analyze(
     """Run all three report sections."""
     paths = _path_views(network, k)
     baseline = paths[0].total_difficulty if paths else None
+    cheapest = cheapest_attack_path(network)
     return Analysis(
+        cheapest_edge_indices=() if cheapest is None else cheapest.edge_indices,
         network_name=network.name,
         k=k,
         mode=mode,

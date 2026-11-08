@@ -25,8 +25,12 @@ from . import __version__
 from .capacity import CAPACITY_MODES, DEFAULT_CAPACITY_MODE
 from .loader import load_network
 from .maxflow import SelfCheckError
-from .recommend import analyze, whatif
+from .model import Network
+from .recommend import Analysis, analyze, whatif
+from .render_dot import render_with_graphviz, to_dot, write_dot
+from .render_mpl import render_png
 from .report import json_report, json_whatif, text_report, text_whatif
+from .visual import RenderUnavailable
 from .yen import DEFAULT_K
 
 PROGRAM = "chokepoint"
@@ -103,9 +107,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         network = load_network(args.network)
+        analysis: Analysis | None = None
         if args.command == "analyze":
-            result = analyze(network, k=args.k, mode=args.capacity)
-            text, payload = text_report(result), json_report(result)
+            analysis = analyze(network, k=args.k, mode=args.capacity)
+            text, payload = text_report(analysis), json_report(analysis)
         else:
             outcome = whatif(network, args.apply, k=args.k, mode=args.capacity)
             text, payload = text_whatif(outcome), json_whatif(outcome)
@@ -123,22 +128,58 @@ def main(argv: Sequence[str] | None = None) -> int:
     rendered = json.dumps(payload, indent=2) if args.json else text
     print(rendered)
 
-    if getattr(args, "out", None):
-        _write_artifacts(Path(args.out), text, payload)
+    if getattr(args, "out", None) and analysis is not None:
+        _write_artifacts(Path(args.out), text, payload, network, analysis)
 
     return 0
 
 
-def _write_artifacts(directory: Path, text: str, payload: dict) -> None:
-    """Write both renderings side by side.
+def _note(message: str) -> None:
+    """Progress and diagnostics go to stderr.
 
-    Notes go to stderr so that `--json --out DIR` still produces clean JSON on
-    stdout for a pipeline to consume.
+    Keeping stdout to the report alone is what lets `--json --out DIR` be
+    piped into another tool without the notes corrupting the stream.
     """
+    print(f"{PROGRAM}: {message}", file=sys.stderr)
+
+
+def _write_artifacts(
+    directory: Path, text: str, payload: dict, network: Network, analysis: Analysis
+) -> None:
+    """Write the two reports, the .dot file, and a picture if one is possible."""
     directory.mkdir(parents=True, exist_ok=True)
+
     report_txt = directory / "report.txt"
     report_json = directory / "report.json"
     report_txt.write_text(text + "\n", encoding="utf-8")
     report_json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    print(f"{PROGRAM}: wrote {report_txt}", file=sys.stderr)
-    print(f"{PROGRAM}: wrote {report_json}", file=sys.stderr)
+    _note(f"wrote {report_txt}")
+    _note(f"wrote {report_json}")
+
+    highlights = {
+        "cut_edges": frozenset(analysis.fix_set.edge_indices),
+        "cheapest_edges": frozenset(analysis.cheapest_edge_indices),
+        "mode": analysis.mode,
+        "cheapest_cost": analysis.baseline_cheapest,
+        "cut_total": analysis.fix_set.deduplicated_cost,
+    }
+
+    # The .dot file is the real deliverable and is always written: it is text,
+    # it reviews and commits cleanly, and anyone with Graphviz can render it
+    # later at any size. The image is a convenience on top.
+    dot_path = write_dot(directory / "network.dot", to_dot(network, **highlights))
+    _note(f"wrote {dot_path}")
+
+    image_path = directory / "network.png"
+    try:
+        render_with_graphviz(dot_path, image_path)
+    except RenderUnavailable as graphviz_problem:
+        try:
+            render_png(network, image_path, **highlights)
+        except RenderUnavailable as fallback_problem:
+            _note(f"no image written: {fallback_problem}")
+        else:
+            _note(f"wrote {image_path} (matplotlib fallback)")
+        _note(f"note: {graphviz_problem}")
+    else:
+        _note(f"wrote {image_path} (rendered by Graphviz)")
