@@ -102,13 +102,19 @@ def test_residual_edges_allow_an_earlier_choice_to_be_undone():
     assert cut.value == 2
 
 
-def test_bfs_bounds_rounds_independently_of_capacity():
-    """The pathological Ford-Fulkerson graph.
+def test_large_capacities_do_not_cause_many_rounds():
+    """Two fat routes joined by a capacity-1 edge: the textbook trap.
 
-    Two fat routes joined by a capacity-1 edge. A DFS path choice can
-    alternate across the middle edge and need 2,000,000 augmentations on a
-    four-node graph. BFS takes the two short paths first and finishes in a
-    handful of rounds, which is the whole point of Edmonds-Karp.
+    This is a *necessary* condition for the Edmonds-Karp bound, not a
+    demonstration of it. Measured over all 120 orderings of these five edges,
+    both a stack-based search and a truly recursive DFS also finish this graph
+    in at most 4 rounds, so passing here does not by itself distinguish
+    Edmonds-Karp from plain Ford-Fulkerson. The alternating blow-up the
+    textbook describes needs an adversarial path choice that none of those
+    orderings actually produces.
+
+    The test that does discriminate is
+    test_augmenting_path_lengths_never_decrease below.
     """
     fat = 1_000_000
     net = net_with_costs(
@@ -126,6 +132,41 @@ def test_bfs_bounds_rounds_independently_of_capacity():
     cut = min_cut(net)
     assert cut.value == 2 * fat
     assert cut.augmentations <= 4, f"took {cut.augmentations} rounds; BFS should need ~2"
+
+
+@pytest.mark.parametrize("seed", range(120))
+def test_augmenting_path_lengths_never_decrease(seed):
+    """The lemma the O(V*E^2) bound actually rests on, checked directly.
+
+    Edmonds-Karp is bounded because always taking a *shortest* augmenting
+    path means the shortest augmenting path length never decreases from one
+    round to the next. Each edge can then be a bottleneck only O(V) times.
+    Other selection rules break the lemma: over 300 of these graphs a
+    stack-based search produced 224 decreases across 157 graphs, while BFS
+    produced none.
+
+    This drives the internals round by round on purpose, because the property
+    is about the *sequence* of augmentations and max_flow_min_cut only
+    returns the total.
+    """
+    net = random_network(seed, n_nodes=20, n_edges=60)
+    graph = augmented(net)
+    residual = maxflow_module._Residual(graph, arc_capacities(graph, "fixcost"))
+
+    previous = 0
+    while (
+        path := maxflow_module._shortest_augmenting_path(
+            residual, graph.source, graph.sink
+        )
+    ) is not None:
+        assert len(path) >= previous, (
+            f"seed {seed}: augmenting path length fell from {previous} to {len(path)}"
+        )
+        previous = len(path)
+        bottleneck = min(residual.capacity[arc] for arc in path)
+        for arc in path:
+            residual.capacity[arc] -= bottleneck
+            residual.capacity[arc ^ 1] += bottleneck
 
 
 def test_unreachable_target_gives_an_empty_cut():

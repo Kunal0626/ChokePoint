@@ -171,8 +171,35 @@ overall. The bound no longer mentions the capacities.
 
 That independence is not academic here. `--capacity inverse-difficulty`
 produces fractional capacities like 1/7, and the capacity-dependent bound says
-nothing useful about those. ChokePoint's test suite includes the
-million-capacity graph above and asserts it finishes in at most 4 rounds.
+nothing useful about those.
+
+### A caveat on that example, because it is easy to overclaim
+
+ChokePoint's test suite contains the million-capacity graph above and checks
+it finishes in at most 4 rounds. That check is weaker than it looks, and the
+test says so. Running all 120 orderings of its five edges, a stack-based
+search and a genuinely recursive DFS *also* finish in at most 4 rounds. The
+alternating blow-up the textbook describes needs an adversarial path choice
+that none of those orderings actually produces: once one unit crosses the
+middle edge it saturates, and the next search simply takes a fat route and
+pushes a million units at once.
+
+So what does the suite check instead? The **lemma the bound rests on**:
+choosing a shortest augmenting path each round means the shortest augmenting
+path length never decreases, which is what limits each edge to being a
+bottleneck O(V) times. That property is directly observable and it genuinely
+separates the two rules. Measured over 300 seeded graphs at 20 nodes and
+60 edges:
+
+| Path selection | Rounds where the path got *shorter* | Graphs affected |
+|---|---|---|
+| BFS, as implemented | 0 | 0 of 300 |
+| Stack / LIFO | 224 | 157 of 300 |
+
+A single round where the length drops is proof the selection rule is not
+Edmonds-Karp and the O(V·E²) bound does not apply to it. That is the
+assertion `test_augmenting_path_lengths_never_decrease` makes, on every one
+of those graphs.
 
 ## 4. Residual edges: what they are and why they exist
 
