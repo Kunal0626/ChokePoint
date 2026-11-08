@@ -47,6 +47,7 @@ def random_network(
     n_targets: int = 1,
     max_difficulty: int = 10,
     max_fix_cost: int = 5,
+    allow_parallel: bool = True,
 ) -> Network:
     """A reproducible random network.
 
@@ -66,8 +67,18 @@ def random_network(
     targets = ids[-n_targets:]
 
     edges: list[dict[str, Any]] = []
-    for _ in range(n_edges):
+    used: set[tuple[str, str]] = set()
+    attempts = 0
+    while len(edges) < n_edges and attempts < n_edges * 20:
+        attempts += 1
         source, target = rng.sample(ids, 2)  # sample of 2 cannot be a self-loop
+        # allow_parallel=False is for oracle tests against networkx DiGraph,
+        # which cannot represent parallel edges and would otherwise silently
+        # disagree about how many distinct routes exist.
+        if not allow_parallel:
+            if (source, target) in used:
+                continue
+            used.add((source, target))
         edges.append(
             {
                 "from": source,
@@ -158,3 +169,41 @@ def assert_path_consistent(net: Network, path: Any) -> None:
 
 def augmented(net: Network) -> AugmentedGraph:
     return build_augmented_graph(net)
+
+
+def to_networkx_simple(graph: AugmentedGraph) -> nx.DiGraph:
+    """Mirror an augmented graph into a plain DiGraph.
+
+    Only valid when the network has no parallel edges; a DiGraph keeps one
+    edge per node pair, so building this from a multigraph would quietly
+    discard routes.
+    """
+    mirror = nx.DiGraph()
+    mirror.add_nodes_from(graph.adjacency)
+    for arc_index, arc in enumerate(graph.arcs):
+        if mirror.has_edge(arc.source, arc.target):
+            raise AssertionError(
+                f"parallel edge {arc.source}->{arc.target}: use to_networkx instead"
+            )
+        mirror.add_edge(
+            arc.source, arc.target, difficulty=graph.difficulty_of(arc_index)
+        )
+    return mirror
+
+
+def networkx_k_shortest_costs(graph: AugmentedGraph, k: int) -> list[int]:
+    """Costs of the k shortest simple paths per networkx, cheapest first."""
+    mirror = to_networkx_simple(graph)
+    costs: list[int] = []
+    try:
+        for path in nx.shortest_simple_paths(
+            mirror, graph.source, graph.sink, weight="difficulty"
+        ):
+            costs.append(
+                sum(mirror[u][v]["difficulty"] for u, v in zip(path, path[1:]))
+            )
+            if len(costs) == k:
+                break
+    except nx.NetworkXNoPath:
+        return []
+    return costs
